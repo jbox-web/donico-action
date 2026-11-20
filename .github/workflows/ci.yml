@@ -8,6 +8,10 @@
 #   commit date;
 # - build: the action on the runner itself, fed with the matrix job's output,
 #   then a real two-platform build of example/, and the cleanup action.
+# - build-in-container: the same build from a job container, with a
+#   docker-in-docker service as the daemon (docker-host), the shape of a
+#   self-hosted fleet: the runner then runs every later step through its own
+#   `docker exec`, which the action must leave pointed at the runner's daemon.
 #
 # Each job asserts on literal values written from the README, never on what a
 # previous run printed.
@@ -136,3 +140,53 @@ jobs:
             echo "the builder $DONICO_ACTION_BUILDER is still there" >&2
             exit 1
           fi
+
+  build-in-container:
+    needs: matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.matrix.outputs.include) }}
+    runs-on: ubuntu-24.04
+    container: docker:29-cli
+    services:
+      docker:
+        image: docker:29-dind
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+    steps:
+      # The prerequisites of the action, which never installs them.
+      - name: Install the prerequisites
+        run: apk add --no-cache bash coreutils curl git jq tar
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Wait for the daemon of the service
+        run: |
+          for _ in $(seq 1 30); do
+            docker -H tcp://docker:2375 info > /dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          exit 1
+      - uses: ./
+        with:
+          version: 3.3.0
+          working-directory: example
+          docker-host: tcp://docker:2375
+      - name: Build the example
+        working-directory: example
+        run: donico ${{ matrix.task }}:build
+      # A step the runner starts with `docker exec` on its own daemon: it
+      # fails if the action passed docker-host on to the step environment.
+      - name: Check the image of each platform, and the environment
+        working-directory: example
+        shell: bash
+        run: |
+          set -o errexit -o nounset -o pipefail
+          [ -z "${DOCKER_HOST:-}" ]
+          tag="$(donico matrix | jq --raw-output '.[0].build_tag')"
+          [ "$(docker run --rm --platform linux/amd64 "$tag" cat /etc/donico-action-example)" = "x86_64" ]
+          [ "$(docker run --rm --platform linux/arm64 "$tag" cat /etc/donico-action-example)" = "aarch64" ]
+      - uses: ./cleanup
+        if: always()

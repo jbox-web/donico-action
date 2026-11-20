@@ -101,7 +101,7 @@ uses it and downloads nothing.
 | `working-directory` | `.` | Directory that holds `donico.yml`. |
 | `setup-docker` | `true` | Prepare Docker. `false` in a job that only reads the matrix: no `docker` command is run. |
 | `registry-auth` | none | Content of a Docker `config.json` holding the registry credentials. Pass it from a secret. |
-| `docker-host` | none | Address of the Docker daemon, exported as `DOCKER_HOST`. |
+| `docker-host` | none | Address of the Docker daemon (`tcp://docker:2375` for a docker-in-docker service). It becomes the current context of the job's Docker configuration (`DOCKER_CONFIG`), never `DOCKER_HOST`: in a job container the runner runs every step through its own `docker exec`, which would follow it. |
 | `setup-qemu` | `true` | Install the binfmt handlers that let the daemon build every platform. |
 | `setup-buildx` | `true` | Create and select a buildx builder of the job's own. |
 
@@ -148,8 +148,7 @@ with donico's own message.
 | `PATH` | Prepended with the directory of the downloaded donico, when one is downloaded. |
 | `CI_COMMIT_TIMESTAMP` | The date of the commit being built (`git log -1 --format=%cI`). donico derives the build tag and `BUILD_DATE` from it: the same 14 digits as under GitLab CI, the same for every task of the job and for every build of one commit. |
 | `CI_PIPELINE_CREATED_AT` | The time the action ran. A Debian root filesystem is dated from the day before it, so `build` and `push` of one job agree. |
-| `DOCKER_HOST` | `docker-host`, when given. |
-| `DOCKER_CONFIG` | The Docker configuration written from `registry-auth`, when given. The CLI plugins of the configuration it replaces (`~/.docker/cli-plugins`) are linked into it. |
+| `DOCKER_CONFIG` | The Docker configuration of the job, written from `registry-auth` and `docker-host`, when given. The CLI plugins of the configuration it replaces (`~/.docker/cli-plugins`) are linked into it. |
 | `DONICO_ACTION_BUILDER`, `DONICO_ACTION_DOCKER_CONFIG` | What the cleanup action removes. |
 
 `CI_COMMIT_TIMESTAMP` and `CI_PIPELINE_CREATED_AT` are left alone when the job

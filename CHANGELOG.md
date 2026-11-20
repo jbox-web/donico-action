@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `docker-host` broke every later step of a job that runs in a container: the
+  action exported it as `DOCKER_HOST`, which the runner's own `docker exec` on
+  the host followed too. It now becomes the current context of the job's
+  Docker configuration, and `DOCKER_HOST` is never set.
+
 ### Added
 
 - The donico action: installs donico (version input, then the pin of

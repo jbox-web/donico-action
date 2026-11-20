@@ -51,12 +51,44 @@ donico-action: buildx builder $builder created and selected" ]
   [ "$(cat "$GITHUB_ENV")" != "$first" ]
 }
 
-@test "talks to the daemon of docker-host, and passes it on to the next steps" {
+# Through a context of the job's own Docker configuration, never DOCKER_HOST:
+# in a job container, the runner hands the environment of a step to its own
+# `docker exec` on the host, which would then call docker-host and fail.
+@test "talks to the daemon of docker-host through a context of the job's own, and passes it on to the next steps" {
   export INPUT_DOCKER_HOST=tcp://docker:2375
   run_script docker.sh
   [ "$status" -eq 0 ]
-  [ "$(head -n 1 "$GITHUB_ENV")" = "DOCKER_HOST=tcp://docker:2375" ]
-  [ "$(sort -u "$STUB_LOG/docker.env")" = "tcp://docker:2375 -" ]
+  [ "$(head -n 2 "$STUB_LOG/docker")" = "context create donico-action --docker host=tcp://docker:2375
+context use donico-action" ]
+  [ "$(head -n 2 "$GITHUB_ENV")" = "DOCKER_CONFIG=$CONFIG_DIR
+DONICO_ACTION_DOCKER_CONFIG=$CONFIG_DIR" ]
+  [ "$(sort -u "$STUB_LOG/docker.env")" = "- $CONFIG_DIR" ]
+  [ "$(cat "$CONFIG_DIR/config.json")" = "{}" ]
+  [ "$(stat -c %a "$CONFIG_DIR/config.json")" = "600" ]
+}
+
+@test "never passes DOCKER_HOST on to the next steps" {
+  export INPUT_DOCKER_HOST=tcp://docker:2375
+  run_script docker.sh
+  [ "$status" -eq 0 ]
+  run ! grep --quiet '^DOCKER_HOST=' "$GITHUB_ENV"
+}
+
+@test "writes registry-auth before it selects the context of docker-host" {
+  export INPUT_DOCKER_HOST=tcp://docker:2375 INPUT_REGISTRY_AUTH="$TOKEN"
+  run_script docker.sh
+  [ "$status" -eq 0 ]
+  [ "$(cat "$CONFIG_DIR/config.json")" = "$TOKEN" ]
+  [ "$(head -n 2 "$STUB_LOG/docker")" = "context create donico-action --docker host=tcp://docker:2375
+context use donico-action" ]
+  [ "$(sort -u "$STUB_LOG/docker.env")" = "- $CONFIG_DIR" ]
+}
+
+@test "stops when the context of docker-host cannot be created" {
+  export INPUT_DOCKER_HOST=tcp://docker:2375 DOCKER_STUB_FAIL='^context create'
+  run_script docker.sh
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::error::donico-action: cannot point docker at tcp://docker:2375"* ]]
 }
 
 @test "writes registry-auth into a configuration of the job's own, readable by the job's user only" {

@@ -39,7 +39,9 @@ inputs:
     required: false
     default: ""
   docker-host:
-    description: Address of the Docker daemon, exported as DOCKER_HOST for the rest of the job.
+    description: >-
+      Address of the Docker daemon, for the rest of the job. It becomes the
+      current context of the job's Docker configuration, never DOCKER_HOST.
     required: false
     default: ""
   setup-qemu:
