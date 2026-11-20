@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Stand-in for date: logs its arguments and prints $DATE_STUB.
+printf '%s\n' "$*" >> "$STUB_LOG/date"
+printf '%s\n' "$DATE_STUB"

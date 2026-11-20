@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Stand-in for curl. Logs each call as one line, then:
+# - with -w, prints $CURL_STUB_REDIRECT_URL (the redirect of /releases/latest);
+# - with -o FILE, copies the file of $CURL_STUB_FILES named like the last
+#   segment of the URL to FILE, or exits 22 as `curl --fail` does on a 404.
+printf '%s\n' "$*" >> "$STUB_LOG/curl"
+out="" write_out="" url=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -o | --output) out="$2"; shift 2 ;;
+    -w | --write-out) write_out="$2"; shift 2 ;;
+    --retry | --connect-timeout | --max-time) shift 2 ;;
+    -*) shift ;;
+    *) url="$1"; shift ;;
+  esac
+done
+if [ -n "$write_out" ]; then
+  printf '%s' "${CURL_STUB_REDIRECT_URL:-}"
+  exit 0
+fi
+file="${CURL_STUB_FILES:-/nonexistent}/${url##*/}"
+if [ -n "$out" ] && [ -f "$file" ]; then
+  cp "$file" "$out"
+  exit 0
+fi
+echo "curl: (22) The requested URL returned error: 404" >&2
+exit 22

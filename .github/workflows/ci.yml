@@ -1,0 +1,138 @@
+# The checks of the action, from the cheapest to the most real:
+# - lint: shellcheck, action-validator and actionlint (mise run dev:lint);
+# - test: the bats tests of every script, with stand-ins for docker, curl and
+#   donico (mise run dev:test);
+# - matrix: the action itself in a bare Debian container, on an amd64 and an
+#   arm64 runner, as the matrix job of an image repository uses it
+#   (setup-docker: false): the real release download, the matrix output, the
+#   commit date;
+# - build: the action on the runner itself, fed with the matrix job's output,
+#   then a real two-platform build of example/, and the cleanup action.
+#
+# Each job asserts on literal values written from the README, never on what a
+# previous run printed.
+name: CI
+
+on:
+  push:
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5
+      - run: mise run dev:lint
+
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v5
+      - run: mise run dev:test
+
+  matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    container: debian:bookworm-slim
+    outputs:
+      include: ${{ steps.donico.outputs.matrix }}
+    steps:
+      # The prerequisites of the action, which never installs them. git also
+      # makes actions/checkout clone instead of downloading a tarball.
+      - name: Install the prerequisites
+        run: |
+          apt-get update
+          apt-get install --yes --no-install-recommends ca-certificates curl git jq
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./
+        id: donico
+        with:
+          version: 3.2.0
+          working-directory: example
+          setup-docker: false
+      - name: Check the outputs and the environment
+        shell: bash
+        env:
+          VERSION: ${{ steps.donico.outputs.version }}
+          MATRIX: ${{ steps.donico.outputs.matrix }}
+          IMAGE_BUILDER: ${{ steps.donico.outputs.image-builder }}
+        run: |
+          set -o errexit -o nounset -o pipefail
+          [ "$VERSION" = "3.2.0" ]
+          [ "$(donico version)" = "3.2.0" ]
+          [ "$MATRIX" = '[{"distro":"bookworm","version":"1.0","task":"bookworm:1.0"}]' ]
+          [ "$IMAGE_BUILDER" = "bake" ]
+          [ "$CI_COMMIT_TIMESTAMP" = "$(git -c safe.directory='*' log -1 --format=%cI)" ]
+          [ -n "$CI_PIPELINE_CREATED_AT" ]
+          [ -z "${DONICO_ACTION_BUILDER:-}" ]
+
+  build:
+    needs: matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.matrix.outputs.include) }}
+    runs-on: ubuntu-24.04
+    steps:
+      # The build task loads a two-platform image into the daemon, which needs
+      # the containerd image store: switched on here, keeping the rest of the
+      # daemon configuration of the runner.
+      - name: Enable the containerd image store
+        run: |
+          config=/etc/docker/daemon.json
+          [ -s "$config" ] || echo '{}' | sudo tee "$config" > /dev/null
+          sudo jq '.features["containerd-snapshotter"] = true' "$config" | sudo tee "$config.new" > /dev/null
+          sudo mv "$config.new" "$config"
+          sudo systemctl restart docker
+          docker info --format '{{json .DriverStatus}}'
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # No version input and no mise.toml in example/: the latest release.
+      - uses: ./
+        id: donico
+        with:
+          working-directory: example
+      - name: Build the example
+        working-directory: example
+        run: donico ${{ matrix.task }}:build
+      - name: Check the image of each platform
+        working-directory: example
+        run: |
+          set -o errexit -o nounset -o pipefail
+          # donico writes the commit date in its own offset: its digits, as they are.
+          digits="${CI_COMMIT_TIMESTAMP:0:19}"
+          digits="${digits//[-T:]/}"
+          tag="$(donico matrix | jq --raw-output '.[0].build_tag')"
+          [ "$tag" = "example/1.0/bookworm:$digits" ]
+          [ "$(docker run --rm --platform linux/amd64 "$tag" cat /etc/donico-action-example)" = "x86_64" ]
+          [ "$(docker run --rm --platform linux/arm64 "$tag" cat /etc/donico-action-example)" = "aarch64" ]
+      - uses: ./cleanup
+        if: always()
+      - name: Check the cleanup
+        run: |
+          set -o errexit -o nounset -o pipefail
+          [ -n "$DONICO_ACTION_BUILDER" ]
+          builders="$(docker buildx ls --format '{{.Name}}')"
+          if grep --quiet --fixed-strings --line-regexp "$DONICO_ACTION_BUILDER" <<< "$builders"; then
+            echo "the builder $DONICO_ACTION_BUILDER is still there" >&2
+            exit 1
+          fi

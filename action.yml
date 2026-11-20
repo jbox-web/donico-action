@@ -1,0 +1,114 @@
+# The donico action: everything a GitHub Actions job needs before it runs
+# `donico <distro>:<version>:<task>`. It installs donico, gives the matrix of
+# the project in the form of `strategy.matrix.include`, dates the build the
+# way donico expects under GitLab CI, and prepares Docker.
+#
+# Each step is one script of scripts/, tested on its own with bats (test/).
+# The inputs reach the scripts as INPUT_* variables; nothing is interpolated
+# into a `run:` line, so no input value is ever parsed as shell.
+name: donico
+description: Install donico, read the matrix of its donico.yml and prepare Docker for its tasks
+author: Nicolas Rodriguez
+branding:
+  icon: package
+  color: blue
+
+inputs:
+  version:
+    description: >-
+      Version of donico to install. Defaults to the "github:jbox-web/donico"
+      or "aqua:jbox-web/donico" pin of the project's mise.toml (or
+      .mise.toml), then to the latest release.
+    required: false
+    default: ""
+  working-directory:
+    description: Directory that holds donico.yml.
+    required: false
+    default: "."
+  setup-docker:
+    description: >-
+      Prepare Docker (docker-host, registry-auth, binfmt, buildx). Set to
+      false in a job that only reads the matrix.
+    required: false
+    default: "true"
+  registry-auth:
+    description: >-
+      Content of a Docker config.json holding the registry credentials,
+      written to a Docker configuration of the job's own (DOCKER_CONFIG).
+      Pass it from a secret.
+    required: false
+    default: ""
+  docker-host:
+    description: Address of the Docker daemon, exported as DOCKER_HOST for the rest of the job.
+    required: false
+    default: ""
+  setup-qemu:
+    description: Install the binfmt handlers that let the daemon build every platform.
+    required: false
+    default: "true"
+  setup-buildx:
+    description: Create and select a buildx builder of the job's own.
+    required: false
+    default: "true"
+
+outputs:
+  version:
+    description: Version of donico on the PATH.
+    value: ${{ steps.install.outputs.version }}
+  matrix:
+    description: >-
+      The matrix of donico.yml as a JSON array for strategy.matrix.include,
+      one object per row: distro, version, and task (the prefix of its task
+      names, "<distro>:<version>").
+    value: ${{ steps.matrix.outputs.matrix }}
+  image-builder:
+    description: The image builder of the project, bake or debuerreotype (which has no test task).
+    value: ${{ steps.matrix.outputs.image-builder }}
+
+runs:
+  using: composite
+  steps:
+    - name: Check the prerequisites
+      shell: bash
+      env:
+        INPUT_SETUP_DOCKER: ${{ inputs.setup-docker }}
+      run: bash "$GITHUB_ACTION_PATH/scripts/prerequisites.sh"
+
+    - name: Choose the donico version
+      id: version
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+      run: bash "$GITHUB_ACTION_PATH/scripts/version.sh"
+
+    - name: Install donico
+      id: install
+      shell: bash
+      env:
+        WANTED_VERSION: ${{ steps.version.outputs.version }}
+      run: bash "$GITHUB_ACTION_PATH/scripts/install.sh"
+
+    - name: Read the matrix
+      id: matrix
+      shell: bash
+      env:
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+      run: bash "$GITHUB_ACTION_PATH/scripts/matrix.sh"
+
+    - name: Date the build
+      shell: bash
+      env:
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+      run: bash "$GITHUB_ACTION_PATH/scripts/timestamp.sh"
+
+    - name: Prepare Docker
+      shell: bash
+      env:
+        INPUT_SETUP_DOCKER: ${{ inputs.setup-docker }}
+        INPUT_SETUP_QEMU: ${{ inputs.setup-qemu }}
+        INPUT_SETUP_BUILDX: ${{ inputs.setup-buildx }}
+        INPUT_REGISTRY_AUTH: ${{ inputs.registry-auth }}
+        INPUT_DOCKER_HOST: ${{ inputs.docker-host }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+      run: bash "$GITHUB_ACTION_PATH/scripts/docker.sh"

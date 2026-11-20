@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Stand-in for docker. Logs each call as one line, and the DOCKER_HOST and
+# DOCKER_CONFIG it sees ("-" when unset) in docker.env, then:
+# - `docker info` prints $DOCKER_STUB_DRIVER_STATUS;
+# - `docker buildx version` fails when DOCKER_STUB_NO_BUILDX is set;
+# - any call whose arguments match the extended regex $DOCKER_STUB_FAIL exits 1.
+printf '%s\n' "$*" >> "$STUB_LOG/docker"
+# The daemon and the configuration each call would use.
+printf '%s %s\n' "${DOCKER_HOST:--}" "${DOCKER_CONFIG:--}" >> "$STUB_LOG/docker.env"
+if [ -n "${DOCKER_STUB_FAIL:-}" ] && [[ "$*" =~ $DOCKER_STUB_FAIL ]]; then
+  echo "docker stub: refused: $*" >&2
+  exit 1
+fi
+case "$1 ${2:-}" in
+  "info "*) printf '%s\n' "${DOCKER_STUB_DRIVER_STATUS:-}" ;;
+  "buildx version")
+    if [ -n "${DOCKER_STUB_NO_BUILDX:-}" ]; then
+      echo "docker: 'buildx' is not a docker command." >&2
+      exit 1
+    fi
+    echo "github.com/docker/buildx v0.30.0"
+    ;;
+esac
+exit 0

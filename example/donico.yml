@@ -1,0 +1,14 @@
+---
+# The project the end-to-end job of .github/workflows/ci.yml builds with the
+# action: one row, two platforms, so that it needs binfmt, a buildx builder
+# and the containerd image store. It is built and loaded, never pushed: the
+# registry below does not exist.
+registry: registry.invalid/donico-action
+image_name: example
+image_builder: bake
+matrix:
+  - version: "1.0"
+    distro: bookworm
+    archs: ["linux/amd64", "linux/arm64"]
+    tags:
+      - "%<version>s-%<distro>s"

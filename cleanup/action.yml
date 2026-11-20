@@ -1,0 +1,16 @@
+# Companion of the donico action: removes the buildx builder and the Docker
+# configuration it created. Call it as the last step of a job whose daemon or
+# disk outlive the job, with `if: always()`. It never fails the job.
+name: donico cleanup
+description: Remove the buildx builder and the Docker configuration created by the donico action
+author: Nicolas Rodriguez
+branding:
+  icon: trash-2
+  color: blue
+
+runs:
+  using: composite
+  steps:
+    - name: Remove what the donico action created
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/../scripts/cleanup.sh"

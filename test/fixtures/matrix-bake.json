@@ -1,0 +1,59 @@
+[
+  {
+    "name": "myapp",
+    "version": "1.0",
+    "distro": "bookworm",
+    "archs": [
+      "linux/amd64",
+      "linux/arm64"
+    ],
+    "dockerfile": "Dockerfile",
+    "build_args": [
+      "BUILD_DATE=20261117093000",
+      "DISTRO_NAME=bookworm",
+      "MYAPP_VERSION=1.0"
+    ],
+    "test_args": [],
+    "tags": [
+      "%<version>s-%<distro>s"
+    ],
+    "secret_envs": [],
+    "secret_files": [],
+    "test_variants": [],
+    "login_env": [],
+    "build_tag": "myapp/1.0/bookworm:20261117093000",
+    "prod_tags": [
+      "registry.example.com/base/myapp:1.0-bookworm"
+    ],
+    "build_target": "bookworm-1-0-build",
+    "push_target": "bookworm-1-0-push"
+  },
+  {
+    "name": "myapp",
+    "version": "2.0",
+    "distro": "trixie",
+    "archs": [
+      "linux/amd64"
+    ],
+    "dockerfile": "Dockerfile",
+    "build_args": [
+      "BUILD_DATE=20261117093000",
+      "DISTRO_NAME=trixie",
+      "MYAPP_VERSION=2.0"
+    ],
+    "test_args": [],
+    "tags": [
+      "%<version>s-%<distro>s"
+    ],
+    "secret_envs": [],
+    "secret_files": [],
+    "test_variants": [],
+    "login_env": [],
+    "build_tag": "myapp/2.0/trixie:20261117093000",
+    "prod_tags": [
+      "registry.example.com/base/myapp:2.0-trixie"
+    ],
+    "build_target": "trixie-2-0-build",
+    "push_target": "trixie-2-0-push"
+  }
+]

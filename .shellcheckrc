@@ -1,0 +1,3 @@
+# Every @test of bats runs in a subshell, so an export in a test is meant to
+# stay local to it: SC2030 and SC2031 only report that, on every test.
+disable=SC2030,SC2031

@@ -1,0 +1,38 @@
+[
+  {
+    "distro": "trixie",
+    "version": "13",
+    "archs": [
+      "linux/amd64",
+      "linux/arm64"
+    ],
+    "eol": false,
+    "debootstrap_opts": [
+      "--debian"
+    ],
+    "timestamp": "20261117",
+    "image": "registry.example.com/debian/trixie",
+    "tarballs": [
+      "build/trixie-amd64-20261117.tar",
+      "build/trixie-arm64-20261117.tar"
+    ]
+  },
+  {
+    "distro": "bookworm",
+    "version": "12",
+    "archs": [
+      "linux/amd64",
+      "linux/arm64"
+    ],
+    "eol": false,
+    "debootstrap_opts": [
+      "--debian"
+    ],
+    "timestamp": "20261117",
+    "image": "registry.example.com/debian/bookworm",
+    "tarballs": [
+      "build/bookworm-amd64-20261117.tar",
+      "build/bookworm-arm64-20261117.tar"
+    ]
+  }
+]

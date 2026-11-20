@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Stand-in for uname: -s prints $UNAME_STUB_S, -m prints $UNAME_STUB_M.
+case "$1" in
+  -s) printf '%s\n' "$UNAME_STUB_S" ;;
+  -m) printf '%s\n' "$UNAME_STUB_M" ;;
+  *) exit 1 ;;
+esac

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Stand-in for an installed donico. Logs each call as "<directory> <args>":
+# - `donico version` prints $DONICO_STUB_VERSION;
+# - `donico matrix` prints the file $DONICO_STUB_MATRIX, or fails with the
+#   message $DONICO_STUB_ERROR when that is set, as donico refuses a donico.yml;
+# - `donico image-builder` prints $DONICO_STUB_BUILDER.
+printf '%s %s\n' "$PWD" "$*" >> "$STUB_LOG/donico"
+if [ -n "${DONICO_STUB_ERROR:-}" ] && [ "$1" != version ]; then
+  echo "donico: $DONICO_STUB_ERROR" >&2
+  exit 1
+fi
+case "$1" in
+  version) printf '%s\n' "${DONICO_STUB_VERSION:-}" ;;
+  matrix) cat "$DONICO_STUB_MATRIX" ;;
+  image-builder) printf '%s\n' "${DONICO_STUB_BUILDER:-bake}" ;;
+  *) exit 1 ;;
+esac
