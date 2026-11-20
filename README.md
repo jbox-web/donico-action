@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: jbox-web/donico-action@v1.0.0
+      - uses: jbox-web/donico-action@v0.1.0
         id: donico
         with:
           setup-docker: false
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: jbox-web/donico-action@v1.0.0
+      - uses: jbox-web/donico-action@v0.1.0
         id: donico
         with:
           registry-auth: ${{ secrets.REGISTRY_DOCKER_CONFIG }}
@@ -83,7 +83,7 @@ service passes the address of that daemon:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: jbox-web/donico-action@v1.0.0
+      - uses: jbox-web/donico-action@v0.1.0
         with:
           registry-auth: ${{ secrets.REGISTRY_DOCKER_CONFIG }}
           docker-host: tcp://docker:2375
@@ -179,7 +179,7 @@ ephemeral daemon), end the job with the cleanup action. It removes the builder
 and the Docker configuration, and never fails the job:
 
 ```yaml
-      - uses: jbox-web/donico-action/cleanup@v1.0.0
+      - uses: jbox-web/donico-action/cleanup@v0.1.0
         if: always()
 ```
 
@@ -201,7 +201,13 @@ The runners hosted by GitHub have all of them. A Debian job container needs
 ## Versions
 
 Releases are tagged `vX.Y.Z`, annotated and signed, and a tag is never moved:
-there is no `v1` tag following the latest `v1.x.y`. Reference an exact tag.
+there is no `v1` tag following the latest `v1.x.y`. Reference an exact tag, or,
+to be safe from a tag moved upstream, the full commit SHA of a tag with the
+version in a comment:
+
+```yaml
+- uses: jbox-web/donico-action@<full commit SHA> # v0.1.0
+```
 
 ## Development
 
