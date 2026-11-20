@@ -1,5 +1,9 @@
 # donico-action
 
+[![CI](https://github.com/jbox-web/donico-action/actions/workflows/ci.yml/badge.svg)](https://github.com/jbox-web/donico-action/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/tag/jbox-web/donico-action?sort=semver&label=release)](https://github.com/jbox-web/donico-action/tags)
+[![License: MIT](https://img.shields.io/github/license/jbox-web/donico-action)](LICENSE)
+
 The GitHub Action of [donico](https://github.com/jbox-web/donico): everything a
 job needs before it runs `donico <distro>:<version>:<task>`.
 
