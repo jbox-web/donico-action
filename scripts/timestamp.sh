@@ -5,8 +5,11 @@
 # day of the clock, computed again by every command: under GitHub Actions a
 # job across midnight would build under one tag and test under another, and
 # the tag would carry the day only. The action sets it to the date of the
-# commit being built: the same 14 digits as under GitLab, the same value for
-# build, test and push, and the same for every build of one commit.
+# commit being built: 14 digits, the same value for build, test and push, and
+# the same for every build of one commit. (Under GitLab CI, donico dates the
+# tag from CI_PIPELINE_CREATED_AT instead, so that two pipelines of one commit
+# on a shared Docker daemon do not share it; it does not read that variable
+# here, where the action sets it to the time each job starts.)
 #
 # A Debian root filesystem (image_builder: debuerreotype) is dated from the
 # day before CI_PIPELINE_CREATED_AT: it names a state of the Debian archive,
